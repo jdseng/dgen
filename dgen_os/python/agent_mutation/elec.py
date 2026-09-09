@@ -131,8 +131,8 @@ def apply_export_tariff_params(dataframe, net_metering_state_df, net_metering_ut
     
     # re-combine agents list and fill nan's
     dataframe = pd.concat([agents_with_utility_nem, agents_without_utility_nem], sort=False)
-    dataframe['compensation_style'].fillna('none', inplace=True)
-    dataframe['nem_system_kw_limit'].fillna(0, inplace=True)
+    dataframe['compensation_style'] = dataframe['compensation_style'].fillna('none')
+    dataframe['nem_system_kw_limit'] = dataframe['nem_system_kw_limit'].fillna(0)
     
     dataframe = dataframe.set_index('agent_id')
 
@@ -641,12 +641,12 @@ def get_nem_settings(state_limits, state_by_sector, utility_by_sector, selected_
     # Return State/Sector data (or null) for all combinations of states and sectors
     full_state_list = state_by_sector.loc[ state_by_sector['scenario'] == 'BAU' ].loc[:, ['state_abbr', 'sector_abbr']]
     state_result = pd.merge( full_state_list, valid_state_sector, how='left', on=['state_abbr','sector_abbr'] )
-    state_result['nem_system_kw_limit'].fillna(0, inplace=True)
+    state_result['nem_system_kw_limit'] = state_result['nem_system_kw_limit'].fillna(0)
     
     # Return Utility/Sector data (or null) for all combinations of utilities and sectors
     full_utility_list = utility_by_sector.loc[ utility_by_sector['scenario'] == 'BAU' ].loc[:, ['eia_id','sector_abbr','state_abbr']]
     utility_result = pd.merge( full_utility_list, valid_utility_sector, how='left', on=['eia_id','sector_abbr','state_abbr'] )
-    utility_result['nem_system_kw_limit'].fillna(0, inplace=True)
+    utility_result['nem_system_kw_limit'] = utility_result['nem_system_kw_limit'].fillna(0)
 
     return state_result, utility_result
 
@@ -974,10 +974,10 @@ def apply_state_incentives(dataframe, state_incentives, year, start_year, state_
 
     # Fill in missing end_dates
     if bool(end_date):
-        state_incentives['end_date'][pd.isnull(state_incentives['end_date'])] = end_date
+        state_incentives['end_date'] = state_incentives['end_date'].fillna(end_date)
 
     # Adjust incenctives to account for reduced values as adoption increases
-    yearly_escalation_function = lambda value, end_year: max(value - value * (1.0 / (end_year - start_year)) * (year-start_year), 0)
+    yearly_escalation_function = lambda value, end_year: 0 if end_year <= start_year else max(value - value * (1.0 / (end_year - start_year)) * (year-start_year), 0)
     for field in ['pbi_usd_p_kwh','cbi_usd_p_w','ibi_pct','cbi_usd_p_wh']:
         state_incentives[field] = state_incentives.apply(lambda row: yearly_escalation_function(row[field], row['end_date'].year), axis=1)
         
@@ -1466,8 +1466,8 @@ def reassign_agent_tariffs(dataframe, con):
     dataframe = dataframe.reset_index()
 
     # separate agents with incorrect and correct rates
-    bad_rates = dataframe.loc[np.in1d(dataframe['tariff_id'], [4145, 7111, 8498, 10953, 10954, 12003])]
-    good_rates = dataframe.loc[~np.in1d(dataframe['tariff_id'], [4145, 7111, 8498, 10953, 10954, 12003])]
+    bad_rates = dataframe.loc[np.isin(dataframe['tariff_id'], [4145, 7111, 8498, 10953, 10954, 12003])]
+    good_rates = dataframe.loc[~np.isin(dataframe['tariff_id'], [4145, 7111, 8498, 10953, 10954, 12003])]
     
     # if incorrect rates exist, grab the correct ones from the rates table
     if len(bad_rates) > 0:

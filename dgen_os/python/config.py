@@ -15,7 +15,7 @@ pg_params_file = 'pg_params_connect.json'
 #==============================================================================
 #   model start year
 #==============================================================================
-start_year = 2014
+start_year = 2020
 
 #==============================================================================
 #   set number of parallel processes to run postgres queries
@@ -30,7 +30,7 @@ role = 'postgres'
 #==============================================================================
 #   local cores
 #==============================================================================
-local_cores = multiprocessing.cpu_count()//2
+local_cores = 14
 
 #==============================================================================
 #  Should the output schema be deleted after the model run
@@ -62,4 +62,4 @@ VERBOSE = False
 cwd = os.getcwd() #should be /python
 pdir = os.path.abspath('..') #should be /dgen or whatever it is called
 
-OBSERVED_DEPLOYMENT_BY_STATE = os.path.join(pdir, 'input_data','observed_deployment_by_state_sector_2020.csv')
+OBSERVED_DEPLOYMENT_BY_STATE = os.path.join(pdir, 'input_data','observed_deployment_by_state_sector_2023.csv')

@@ -228,7 +228,7 @@ def calc_system_performance(kw, pv, utilityrate, loan, batt, costs, agent, rate_
     loan = process_incentives(loan, gen_hourly, agent) 
     
     # Assign system capacity to calculate kw value
-    loan.FinancialParameters.system_capacity = kw
+    loan.FinancialParameters.system_capacity = max(kw, 0.001)
 
     # Add value_of_resiliency -- should only apply from year 1 onwards, not to year 0
     annual_energy_value = ([utilityrate.Outputs.annual_energy_value[0]] + 
@@ -769,10 +769,15 @@ def process_tariff(utilityrate, tariff_dict, net_billing_sell_rate):
             # Reformat demand charge table from dGen format
             n_periods = len(tariff_dict['d_flat_levels'][0])
             n_tiers = len(tariff_dict['d_flat_levels'])
+
+            # SAM requires the last tier of every period to be 1e9 (unlimited).
+            d_flat_levels = np.array(tariff_dict['d_flat_levels'], dtype=float)
+            d_flat_levels[-1, :] = 1e9
+
             ur_dc_flat_mat = []
             for period in range(n_periods):
                 for tier in range(n_tiers):
-                    row = [period, tier+1, tariff_dict['d_flat_levels'][tier][period], tariff_dict['d_flat_prices'][tier][period]]
+                    row = [period, tier+1, d_flat_levels[tier][period], tariff_dict['d_flat_prices'][tier][period]]
                     ur_dc_flat_mat.append(row)
             
             # Demand rates (flat) table
@@ -783,10 +788,17 @@ def process_tariff(utilityrate, tariff_dict, net_billing_sell_rate):
             # Reformat demand charge table from dGen format
             n_periods = len(tariff_dict['d_tou_levels'][0])
             n_tiers = len(tariff_dict['d_tou_levels'])
+
+            d_tou_levels = np.array(tariff_dict['d_tou_levels'], dtype=float)
+            for t in range(n_tiers):
+                real = d_tou_levels[t][d_tou_levels[t] < 1e8]
+                if len(real) > 0 and len(set(d_tou_levels[t])) > 1:
+                    d_tou_levels[t, :] = np.min(real)
+
             ur_dc_tou_mat = []
             for period in range(n_periods):
                 for tier in range(n_tiers):
-                    row = [period+1, tier+1, tariff_dict['d_tou_levels'][tier][period], tariff_dict['d_tou_prices'][tier][period]]
+                    row = [period+1, tier+1, d_tou_levels[tier][period], tariff_dict['d_tou_prices'][tier][period]]
                     ur_dc_tou_mat.append(row)
             
             # Demand rates (TOU) table
@@ -817,7 +829,7 @@ def process_tariff(utilityrate, tariff_dict, net_billing_sell_rate):
     if tariff_dict['e_exists']:
         
         # Dictionary to map dGen max usage units to PySAM options
-        max_usage_dict = {'kWh':0, 'kWh/kW':1, 'kWh daily':2, 'kWh/kW daily':3}
+        max_usage_dict = {'kWh':0, 'kWh/kW':1, 'kWh daily':2, 'kWh/kW daily':3, 'kWh/kVA':1}
 
         # If max usage units are 'kWh daily', divide max usage by 30 -- rate download procedure converts daily to monthly
         # modifier = 30. if tariff_dict['energy_rate_unit'] == 'kWh daily' else 1.
@@ -825,10 +837,24 @@ def process_tariff(utilityrate, tariff_dict, net_billing_sell_rate):
         # Reformat energy charge table from dGen format
         n_periods = len(tariff_dict['e_levels'][0])
         n_tiers = len(tariff_dict['e_levels'])
+
+        # SAM requires uniform tier max values across all TOU periods.
+        # Some URDB rates have explicit tier breaks in one period but not
+        # others (1e9 = no break). Normalize to the real breakpoint so
+        # periods with a flat rate are unaffected (same price both sides).
+        e_levels = np.array(tariff_dict['e_levels'], dtype=float)
+        for t in range(n_tiers):
+            real = e_levels[t][e_levels[t] < 1e8]
+            if len(real) > 0 and len(set(e_levels[t])) > 1:
+                e_levels[t, :] = np.min(real)
+        
+        # Ensure the last tier is unlimited after normalization
+        e_levels[-1, :] = 1e9
+
         ur_ec_tou_mat = []
         for period in range(n_periods):
             for tier in range(n_tiers):
-                row = [period+1, tier+1, tariff_dict['e_levels'][tier][period], max_usage_dict[tariff_dict['energy_rate_unit']],
+                row = [period+1, tier+1, e_levels[tier][period], max_usage_dict[tariff_dict['energy_rate_unit']],
                  tariff_dict['e_prices'][tier][period], net_billing_sell_rate]
                 ur_ec_tou_mat.append(row)
         

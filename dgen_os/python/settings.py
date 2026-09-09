@@ -132,10 +132,10 @@ class ModelSettings(object):
                 check_type(self.get(property_name), int)
             except TypeError as e:
                 raise TypeError('Invalid {0}: {1}'.format(property_name, e))
-            # assert equals 2014
-            if self.start_year != 2014:
+            # assert >= 2014
+            if self.start_year < 2014:
                 raise ValueError(
-                    'Invalid {}: must be set to 2014'.format(property_name))
+                    'Invalid {}: must be >= 2014'.format(property_name))
 
         elif property_name == 'input_scenarios':
             # check type
@@ -433,10 +433,10 @@ class ScenarioSettings(object):
                 raise TypeError('Invalid {0}: {1}'.format(property_name, e))
             # sort ascending
             self.model_years.sort()
-            # make sure starts at 2014
-            if self.model_years[0] != 2014:
+            # make sure starts at or after 2014
+            if self.model_years[0] < 2014:
                 raise ValueError(
-                    'Invalid {}: Must begin with 2014.'.format(property_name))
+                    'Invalid {}: Must begin at 2014 or later.'.format(property_name))
             # last year must be <= 2050
             if self.model_years[-1] > 2050:
                 raise ValueError(

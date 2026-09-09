@@ -147,7 +147,14 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 wholesale_elec_prices = iFuncs.import_table( scenario_settings, con, engine, owner, input_name='wholesale_electricity_prices', csv_import_function=iFuncs.process_wholesale_elec_prices)
                 pv_tech_traj = iFuncs.import_table( scenario_settings, con, engine, owner,input_name='pv_tech_performance', csv_import_function=iFuncs.stacked_sectors)
                 elec_price_change_traj = iFuncs.import_table( scenario_settings, con, engine, owner,input_name='elec_prices', csv_import_function=iFuncs.process_elec_price_trajectories)
-                load_growth = iFuncs.import_table( scenario_settings, con, engine, owner,input_name='load_growth', csv_import_function=iFuncs.stacked_sectors)
+                load_growth = iFuncs.import_table( scenario_settings, con, engine, owner,input_name='load_growth', csv_import_function=None)
+                if 'county_id' not in load_growth.columns and 'nerc_region_abbr' in load_growth.columns:
+                    egrid_to_emm = {'AZNM':'BASN','CAMX':'CANO','ERCT':'TRE','FRCC':'FRCC','MROE':'MISC','MROW':'MISW','NEWE':'ISNE','NWPP':'NWPP','NYCW':'NYCW','NYLI':'NYCW','NYUP':'NYUP','RFCE':'PJME','RFCM':'MISE','RFCW':'PJMW','RMPA':'RMRG','SPNO':'SPPN','SPSO':'SPPS','SRCE':'SRCE','SRDA':'MISS','SRGW':'MISC','SRSE':'SRSE','SRVC':'SRCA'}
+                    county_nerc = pd.read_sql("SELECT county_id, nercregion::text AS egrid_region FROM diffusion_shared.county_nerc_join", con)
+                    county_nerc['nerc_region_abbr'] = county_nerc['egrid_region'].map(egrid_to_emm)
+                    county_nerc = county_nerc.dropna(subset=['nerc_region_abbr'])
+                    load_growth = load_growth.merge(county_nerc[['county_id', 'nerc_region_abbr']], on='nerc_region_abbr', how='inner')
+                load_growth = load_growth[['year', 'county_id', 'sector_abbr', 'nerc_region_abbr', 'load_multiplier']]
                 pv_price_traj = iFuncs.import_table( scenario_settings, con, engine, owner,input_name='pv_prices', csv_import_function=iFuncs.stacked_sectors)
                 batt_price_traj = iFuncs.import_table( scenario_settings, con, engine,owner, input_name='batt_prices', csv_import_function=iFuncs.stacked_sectors)
                 pv_plus_batt_price_traj = iFuncs.import_table( scenario_settings, con, engine,owner, input_name='pv_plus_batt_prices', csv_import_function=iFuncs.stacked_sectors)

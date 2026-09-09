@@ -343,8 +343,15 @@ class Agents(object):
                 for agent_chunks in chunks:
                     for _, row in agent_chunks.iterrows():
                         futures.append(executor.submit(func, row, **kwargs))
-    
-                    results = [future.result() for future in futures]
+
+                total = len(futures)
+                results_map = {}
+                log_interval = max(1, total // 20)
+                for i, future in enumerate(cf.as_completed(futures), start=1):
+                    results_map[future] = future.result()
+                    if i % log_interval == 0 or i == total:
+                        logger.info('chunk_on_row progress: {}/{} agents complete ({:.0f}%)'.format(i, total, 100*i/total))
+                results = [results_map[f] for f in futures]
                 results_df = pd.concat(results, axis=1, sort=False).T              
 
         return results_df
