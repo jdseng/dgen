@@ -531,7 +531,7 @@ def calc_system_size_and_performance(agent, rate_switch_table):
     max_system_kw = min(max_size_load, max_size_roof)
     
     # set tolerance for minimize_scalar based on max_system_kw value
-    tol = min(0.25 * max_system_kw, 0.5)
+    tol = min(0.25 * max_system_kw, 1.0)
     min_system_kw = min(0.3, max_system_kw)
 
     # # Calculate the PV system size that maximizes the agent's NPV, to a tolerance of 0.5 kW. 
