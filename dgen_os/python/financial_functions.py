@@ -636,7 +636,10 @@ def calc_system_size_and_performance(agent, rate_switch_table):
         first_year_elec_bill_without_system = 1.0
 
     # Add outputs to agent df    
-    naep = annual_energy_production_kwh / system_kw
+    if system_kw > 0:
+        naep = annual_energy_production_kwh / system_kw
+    else:
+        naep = 0
     first_year_elec_bill_savings = first_year_elec_bill_without_system - first_year_elec_bill_with_system
     first_year_elec_bill_savings_frac = first_year_elec_bill_savings / first_year_elec_bill_without_system
     avg_elec_price_cents_per_kwh = first_year_elec_bill_without_system / agent.loc['load_kwh_per_customer_in_bin']
