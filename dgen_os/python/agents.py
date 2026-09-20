@@ -345,14 +345,18 @@ class Agents(object):
                         futures.append(executor.submit(func, row, **kwargs))
 
                 total = len(futures)
-                results_map = {}
                 log_interval = max(1, total // 20)
+                batch_size = 5000
+                batch = []
+                results_dfs = []
                 for i, future in enumerate(cf.as_completed(futures), start=1):
-                    results_map[future] = future.result()
+                    batch.append(future.result())
+                    if len(batch) >= batch_size or i == total:
+                        results_dfs.append(pd.concat(batch, axis=1, sort=False).T)
+                        batch = []
                     if i % log_interval == 0 or i == total:
                         logger.info('chunk_on_row progress: {}/{} agents complete ({:.0f}%)'.format(i, total, 100*i/total))
-                results = [results_map[f] for f in futures]
-                results_df = pd.concat(results, axis=1, sort=False).T              
+                results_df = pd.concat(results_dfs, axis=0, sort=False).reset_index(drop=True)
 
         return results_df
 

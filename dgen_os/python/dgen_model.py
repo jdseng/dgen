@@ -8,6 +8,8 @@ Running this module requires a properly installed environment with applicable sc
 
 import time
 import os
+import gc
+import ctypes
 import pandas as pd
 import psycopg2.extras as pgx
 import numpy as np
@@ -173,6 +175,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     cols = list(solar_agents.df.columns)
                     cols_to_drop = [x for x in cols if x not in cols_base]
                     solar_agents.df.drop(cols_to_drop, axis=1, inplace=True)
+
+                    gc.collect()
+                    ctypes.CDLL('libc.so.6').malloc_trim(0)
 
                     # copy the core agent object and set their year
                     solar_agents.df['year'] = year
