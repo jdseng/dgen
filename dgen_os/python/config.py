@@ -48,7 +48,18 @@ dynamic_system_sizing = True
 NULL_COLUMN_EXCEPTIONS = ['state_incentives', 'pct_state_incentives', 'batt_dispatch_profile', 'export_tariff_results']
 
 CHANGED_DTYPES_EXCEPTIONS = []
-MISSING_COLUMN_EXCEPTIONS = []
+
+EXPENDABLE_INPUT_COLUMNS = [
+    'consumption_hourly', 'solar_cf_profile', 'tariff_dict',
+    'deprec_sch', 'state_incentives'
+]
+
+EXPENDABLE_RESULT_COLUMNS = [
+    'cash_flow', 'batt_dispatch_profile', 'cbi', 'ibi', 'pbi',
+    'cash_incentives', 'export_tariff_results'
+]
+
+MISSING_COLUMN_EXCEPTIONS = list(EXPENDABLE_INPUT_COLUMNS)
 
 #==============================================================================
 #  Detailed Output
