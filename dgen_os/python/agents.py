@@ -194,13 +194,11 @@ class Agents(object):
             results_df = self.apply_on_row(func, cores=cores, **kwargs)
             results_df['agent_id'] = results_df['agent_id'].astype(int)
             results_df = results_df.drop(config.EXPENDABLE_RESULT_COLUMNS, axis='columns', errors='ignore')
-            self.df = self.df.drop(config.EXPENDABLE_INPUT_COLUMNS, axis='columns', errors='ignore')
             results_df = pd.merge(self.df, results_df, on='agent_id')
         elif how_to_apply == 'chunk_on_row':
             results_df = self.apply_chunk_on_row(func, cores=cores, **kwargs)
             results_df['agent_id'] = results_df['agent_id'].astype(int)
             results_df = results_df.drop(config.EXPENDABLE_RESULT_COLUMNS, axis='columns', errors='ignore')
-            self.df = self.df.drop(config.EXPENDABLE_INPUT_COLUMNS, axis='columns', errors='ignore')
             results_df = pd.merge(self.df, results_df.drop_duplicates(subset='agent_id'), on='agent_id')
 
         elif how_to_apply == 'on_frame':
@@ -220,7 +218,7 @@ class Agents(object):
         post_columns = list(results_df.columns)
         duplicated_columns = ['_x' in c for c in post_columns]
         new_columns = [c for c in post_columns if c not in initial_columns]
-        post_dtypes = list(results_df[[c for c in initial_columns if c in results_df.columns]].dtypes)
+        post_dtypes = list(results_df[initial_columns].dtypes)
 
         # --- runtime tests ---
         #check for columns that were dropped
@@ -252,12 +250,10 @@ class Agents(object):
 
         #check for consistant dtypes
         changed_dtypes = []
-        remaining_initial = [c for c in initial_columns if c in results_df.columns]
-        for i, col in enumerate(remaining_initial):
-            init_idx = initial_columns.index(col)
-            if initial_dtypes[init_idx] != post_dtypes[i]:
-                if initial_dtypes[init_idx] != 'O': #pandas 'object' type, could mean that its a string
-                    changed_dtypes.append(col)
+        for i in range(len(initial_columns)):
+            if initial_dtypes[i] != post_dtypes[i]:
+                if initial_dtypes[i] != 'O': #pandas 'object' type, could mean that its a string
+                    changed_dtypes.append(initial_columns[i])
         changed_dtypes = [c for c in changed_dtypes if c not in config.CHANGED_DTYPES_EXCEPTIONS]
         if len(changed_dtypes) > 0:
             raise TypeError("After applying a function, the following columns changed dtypes: {}".format(changed_dtypes))
