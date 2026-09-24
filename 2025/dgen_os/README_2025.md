@@ -308,7 +308,22 @@ else:
 - **Impact:** Reduces merge peak memory by ~65–70 GB (8,760-element arrays × 376,886 agents × 2 copies). Main process RSS peak estimated to drop from ~115 GB to ~45–50 GB.
 - **Verification:** None of the dropped columns are used by any subsequent function (`calc_max_market_share`, `calculate_developable_customers_and_load`, `calc_diffusion_solar`, `estimate_total_generation`). All are explicitly dropped before DB write in `dgen_model.py`.
 - **Run README ref:** Fix 11
+- **Status:** Partially applied in `80feea7` / `8e2453c`. Run 5 (`ntl-230926a`) completed year 2020 but crashed at year 2022 with `KeyError: 'tariff_dict'`. Dropping base agent columns from `self.df` permanently removed `tariff_dict` needed in subsequent years. Resolved by Fix 17.
 - **Date:** 2026-09-23
+
+---
+
+## Fix 17: Retain Base Agent Columns in self.df (Fix KeyError: 'tariff_dict')
+
+- **Files:** `dgen_os/python/config.py`, `dgen_os/python/agents.py`
+- **Problem:** Run 5 (`ntl-230926a`) completed year 2020 successfully (~17.5 hrs), but crashed immediately at year 2022 with `KeyError: 'tariff_dict'` in `financial_functions.calc_system_size_and_performance`.
+- **Root cause:** Fix 16 dropped `EXPENDABLE_INPUT_COLUMNS` (including `tariff_dict`) from `self.df` before `pd.merge` in `run_with_runtime_tests`. Because `chunk_on_row` updates `self.df = results_df`, `tariff_dict` was permanently lost after year 2020. `tariff_dict` is an immutable base agent attribute loaded once at startup (`cols_base`) and used every model year by `calc_system_size_and_performance`. Furthermore, VM inspection showed `self.df` is only 860 MB (<0.4% VM memory) with `tariff_dict` accounting for 316 MB. The true memory spike is in `results_df` (specifically `batt_dispatch_profile` at 8,760 floats/row = ~26.4 GB per DataFrame copy).
+- **Fix:**
+  - `agents.py`: Removed `self.df.drop(config.EXPENDABLE_INPUT_COLUMNS, ...)` before `pd.merge`. Only drop `EXPENDABLE_RESULT_COLUMNS` from `results_df`. Restored standard `initial_columns` checks in runtime tests.
+  - `config.py`: Removed `EXPENDABLE_INPUT_COLUMNS`, kept `EXPENDABLE_RESULT_COLUMNS`, and restored `MISSING_COLUMN_EXCEPTIONS = []`.
+- **Impact:** `self.df` retains all base agent attributes across all model years. Memory optimization remains fully effective by stripping the 26+ GB array columns from `results_df` before the merge copy.
+- **Run README ref:** Fix 12
+- **Date:** 2026-09-24
 
 ---
 
@@ -326,7 +341,8 @@ else:
 - **2026-09-19:** Run 3 killed by OOM at year 2022 (121.8 GB main RSS)
 - **2026-09-20:** Fix 15 applied (batched concat + malloc_trim), committed to `seia` (`74b3802`); Run 4 (`ntl-200926a`) started; OOM troubleshooting documented
 - **2026-09-22:** Run 4 OOM crash at year 2024 (115.8 GB main RSS) — Fix 15 addressed factors 1 and 3 but not factor 2 (merge copy)
-- **2026-09-23:** Fix 16 applied (drop expendable columns before merge), committed to `seia`
+- **2026-09-23:** Fix 16 applied (drop expendable columns before merge), committed to `seia` (`80feea7`, `8e2453c`, `49e66de`); Run 5 (`ntl-230926a`) started
+- **2026-09-24:** Run 5 crashed at year 2022 (`KeyError: 'tariff_dict'`). Fix 17 applied (retain `self.df` base columns, drop from `results_df` only)
 
 ---
 
